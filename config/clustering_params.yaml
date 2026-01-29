@@ -1,0 +1,119 @@
+# Clustering Pipeline Configuration
+# Maritime GPS Spoofing Detection Framework
+#
+# This file contains parameters for the multi-vessel spoofing zone
+# clustering stage (Stage 2).
+
+# ============================================================================
+# DBSCAN Clustering Parameters
+# ============================================================================
+
+# Maximum distance between points to be considered neighbors (km)
+# - Chosen to match effective AIS communication range (~50km)
+# - Ensures clustering operates at same granularity as vessel visibility
+# - Converted to radians internally: epsilon_rad = epsilon_km / 6371
+epsilon_km: 50.0
+
+# Minimum number of points to form a dense region
+# - DBSCAN MinPts parameter
+# - Lower values create more, smaller clusters
+# - Higher values require more intersection evidence
+min_samples: 5
+
+# Minimum vessels required per cluster
+# - Clusters with fewer vessels are discarded
+# - Ensures sufficient spatial agreement across independent observers
+min_vessels_per_cluster: 2
+
+
+# ============================================================================
+# Cluster Stabilization Parameters
+# ============================================================================
+
+# Outlier removal distance factor
+# - Points beyond (factor * mean_distance) from centroid are removed
+# - 3.0 is standard statistical outlier threshold (3 sigma)
+outlier_distance_factor: 3.0
+
+# Temporal persistence threshold (days)
+# - Minimum time span for cluster to be considered persistent
+# - Short-lived clusters may represent transient interference
+persistence_threshold_days: 1
+
+# Minimum temporal overlap for correlation (hours)
+# - Vessels must have overlapping spoofing times to correlate
+# - Prevents grouping unrelated temporal events
+min_temporal_overlap_hours: 0.5
+
+
+# ============================================================================
+# Jump Line Analysis Parameters
+# ============================================================================
+
+# Maximum jump line length to consider (km)
+# - Lines longer than this may represent global MMSI reuse rather than local spoofing
+# - Filters out transcontinental "jumps" from identifier recycling
+max_jump_line_length_km: 1000.0
+
+# Minimum jump line length to consider (km)
+# - Lines shorter than this are likely GPS noise
+# - Filters trivial displacements
+min_jump_line_length_km: 5.0
+
+
+# ============================================================================
+# Cluster Classification Parameters
+# ============================================================================
+
+# Geometric pattern classification thresholds
+
+# Circular pattern detection
+circular_min_arc_degrees: 180        # Minimum arc coverage for circular fit
+circular_max_radius_km: 50.0         # Maximum radius for circular pattern
+circular_min_radius_km: 0.2          # Minimum radius for circular pattern
+circular_fit_tolerance: 0.05         # Maximum radial deviation ratio (5% of radius or 300m)
+
+# Linear pattern detection
+linear_min_length_km: 10.0           # Minimum line length for linear pattern
+linear_max_deviation_m: 250.0        # Maximum orthogonal deviation from line
+linear_min_point_ratio: 0.75         # Minimum ratio of points near line
+
+# Convergence pattern detection
+convergence_max_radius_m: 300.0      # Maximum radius for convergence zone
+convergence_min_vessel_count: 5      # Minimum vessels converging
+convergence_min_point_ratio: 0.25    # Minimum ratio of spoofed points in zone
+
+
+# ============================================================================
+# Temporal Pattern Classification Parameters
+# ============================================================================
+
+# Sustained activity threshold
+sustained_min_days: 7                # Minimum consecutive days for sustained
+sustained_max_variation: 0.10        # Maximum daily variation (10%)
+
+# Recurrent activity threshold
+recurrent_min_peaks: 3               # Minimum activity peaks for recurrent
+recurrent_max_spacing_cv: 0.30       # Maximum coefficient of variation in peak spacing
+
+# Isolated activity threshold
+isolated_max_duration_days: 3        # Maximum duration for isolated classification
+isolated_max_secondary_ratio: 0.25   # Maximum secondary peak relative to primary
+
+
+# ============================================================================
+# Output Settings
+# ============================================================================
+
+# Generate interactive maps
+generate_folium_maps: true
+
+# Generate static matplotlib figures
+generate_static_figures: true
+
+# Map projection for static figures
+# - Options: PlateCarree, Mercator, Robinson, etc.
+map_projection: PlateCarree
+
+# Coordinate decimal precision for output
+coordinate_precision: 5

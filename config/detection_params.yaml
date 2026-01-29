@@ -1,0 +1,123 @@
+# Detection Pipeline Configuration
+# Maritime GPS Spoofing Detection Framework
+#
+# This file contains the threshold and parameter settings for the 
+# per-vessel spoofing detection stage (Stage 1).
+
+# ============================================================================
+# Physical Constraint Thresholds
+# ============================================================================
+
+# Maximum plausible vessel speed in knots
+# - Commercial container ships: typically 15-25 knots
+# - Fast patrol craft: up to 45 knots
+# - Setting 60 knots provides margin for military/coast guard vessels
+max_speed_knots: 60.0
+
+# Kalman filter deviation threshold in kilometers
+# - Normal GPS noise: 10-100 meters
+# - Multipath effects: up to 500 meters near structures
+# - Setting 5km captures large deviations while avoiding false positives
+deviation_threshold_km: 5.0
+
+# Minimum displacement to trigger violations
+# - Suppresses false positives from minor GPS jitter
+# - Prevents flagging normal docking/anchoring activity
+small_jump_threshold_km: 5.0
+
+# Radius for stationary vessel filtering
+# - Vessels within this radius of their first point are filtered
+# - Removes AIS base stations and permanently moored transmitters
+docked_radius_km: 0.5
+
+# Buffer zone around coastlines for land detection
+# - Accounts for GPS uncertainty near shore
+# - Prevents false land violations from coastal vessel traffic
+coastal_buffer_km: 1.0
+
+
+# ============================================================================
+# Kalman Filter Parameters
+# ============================================================================
+
+# Process noise covariance (Q matrix diagonal)
+# - Lower values: filter trusts motion model more
+# - Higher values: filter more responsive to measurements
+# - 1e-5 corresponds to ~1km uncertainty accumulation per hour
+process_noise: 0.00001
+
+# Measurement noise covariance (R matrix diagonal)
+# - Represents expected GPS measurement uncertainty
+# - 1e-4 corresponds to ~100m uncertainty
+measurement_noise: 0.0001
+
+# Initial state covariance (P matrix diagonal)
+# - Initial uncertainty in position and velocity estimates
+# - 1.0 provides moderate initial uncertainty
+initial_covariance: 1.0
+
+# Gap threshold for filter reset (minutes)
+# - Resets Kalman filter after gaps exceeding this threshold
+# - Prevents divergent predictions from large data gaps
+# - 7 minutes captures >92% of typical AIS reporting intervals
+gap_threshold_minutes: 7.0
+
+
+# ============================================================================
+# Finite State Machine Parameters
+# ============================================================================
+
+# Rolling window size for quorum detection (minutes)
+# - Sliding window over which bad point ratio is computed
+# - Must be long enough to distinguish persistent spoofing from noise
+start_window_minutes: 30
+
+# Minimum bad point ratio to trigger activation
+# - Fraction of bad points required within window to confirm spoofing
+# - 0.70 (70%) is conservative, reducing false positives
+start_quorum_ratio: 0.70
+
+# Consecutive clean minutes required to end episode
+# - Time period of normal operation to terminate spoofing event
+# - 120 minutes provides conservative recovery window
+end_clean_minutes: 120
+
+# Minimum event duration for output (minutes)
+# - Episodes shorter than this are discarded as noise
+# - Filters transient anomalies and GPS glitches
+min_event_duration_minutes: 30
+
+# Minimum points spanning an event
+# - Requires at least this many route points for valid episode
+# - Ensures sufficient data for meaningful detection
+min_event_span_points: 1
+
+
+# ============================================================================
+# File Processing Settings
+# ============================================================================
+
+# Number of parallel workers for batch processing
+# - Adjust based on available CPU cores and memory
+# - 4 workers provides stability on most systems
+parallel_workers: 4
+
+# Enable timestamp filtering
+# - When true, reset Kalman filter after large gaps
+# - Improves prediction accuracy at cost of some continuity
+timestamp_filtering: true
+
+
+# ============================================================================
+# Water Raster Settings
+# ============================================================================
+
+# Minimum water occurrence percentage for water classification
+# - Points below this threshold are classified as land
+# - GSW dataset uses 0-100 scale for water occurrence frequency
+gsw_water_threshold: 50
+
+# Resolution of GSW raster (degrees per pixel)
+# - Used for buffer calculations
+# - Default corresponds to ~30m resolution at equator
+gsw_resolution_deg: 0.0003
