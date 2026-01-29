@@ -1,0 +1,54 @@
+# Maritime GPS Spoofing Detection Framework
+# Python Dependencies
+#
+# Install with: pip install -r requirements.txt
+#
+# Note: Some packages require system-level dependencies:
+# - rasterio requires GDAL (brew install gdal / apt-get install libgdal-dev)
+# - cartopy requires GEOS and Proj (brew install geos proj / apt-get install libgeos-dev libproj-dev)
+
+# Core scientific computing
+numpy>=1.21.0,<2.0.0
+scipy>=1.7.0
+pandas>=1.3.0
+
+# Kalman filtering
+filterpy>=1.4.5
+
+# Machine learning (clustering)
+scikit-learn>=1.0.0
+
+# Geospatial processing
+rasterio>=1.2.0
+pyproj>=3.0.0
+shapely>=1.8.0
+fiona>=1.8.0
+
+# Mapping and visualization
+cartopy>=0.20.0
+folium>=0.12.0
+matplotlib>=3.4.0
+
+# Data handling
+tqdm>=4.62.0
+pyyaml>=5.4.0
+
+# Compression support
+gzip-reader>=0.1.0
+
+# Date/time handling
+python-dateutil>=2.8.0
+
+# Optional: For parallel processing optimization
+# joblib>=1.0.0
+# multiprocess>=0.70.0
+
+# Optional: For database operations (preprocessing stage)
+# sqlalchemy>=1.4.0
+
+# Development dependencies (uncomment for development)
+# pytest>=6.2.0
+# pytest-cov>=2.12.0
+# black>=21.0
+# flake8>=3.9.0
+# mypy>=0.910

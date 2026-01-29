@@ -1,0 +1,30 @@
+Academic Review License
+
+Copyright (c) 2024-2025. All rights reserved.
+
+This code is provided solely for academic review purposes as part of the
+anonymous peer review process for [Conference Name Withheld].
+
+PERMITTED USES:
+- Reviewing the code as part of the academic peer review process
+- Evaluating the technical correctness and novelty of the implementation
+- Verifying claims made in the associated paper submission
+
+PROHIBITED USES:
+- Redistribution in any form
+- Commercial use
+- Derivative works
+- Running the code on production data without explicit written permission
+- Using this code or methods for any purpose other than academic review
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Upon acceptance of the associated paper, the authors intend to release this
+code under a standard open-source license. Contact the authors through the
+conference review system for inquiries.
