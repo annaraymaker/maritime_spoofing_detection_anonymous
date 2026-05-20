@@ -14,6 +14,11 @@ The framework processes AIS data containing vessel positions, speeds, and course
 - Implausible speeds (>60 knots)
 - Positions over land (using Global Surface Water raster data)
 
+A self-contained **NOAA reproduction module** (`noaa_validation/`) re-derives the
+Gulf of Mexico spoofing event from NOAA's public AIS feed, independently of the
+Spire dataset, so reviewers can run an end-to-end confirmation from open data on
+a single daily file. See [NOAA Reproduction](#noaa-reproduction-open-data) below.
+
 ## Repository Structure
 
 ```
@@ -42,6 +47,13 @@ maritime_spoofing_repo/
 │       ├── hotspot_mapper.py
 │       ├── trajectory_plotter.py
 │       └── timeline_generator.py
+├── noaa_validation/            # Open-data reproduction (Gulf of Mexico, Cluster 10)
+│   ├── noaa_loader.py          #   schema-normalizing NOAA AIS loader
+│   ├── anomaly_pipeline.py     #   Stage 1 (Kalman + violations + FSM)
+│   ├── zone_analysis.py        #   single-region geometry + synchronization
+│   ├── run_gulf_validation.py  #   one-command runner
+│   ├── README.md               #   module-specific docs
+│   └── (sample data, see below)
 ├── data/
 │   ├── sample/                 # Sample data schemas (no actual data)
 │   └── schemas/                # Data format specifications
@@ -72,15 +84,52 @@ See `requirements.txt` for the full dependency list. Core packages include:
 - `cartopy>=0.20.0` (map projections)
 - `folium>=0.12.0` (interactive mapping)
 
+The `noaa_validation/` module is intentionally lightweight and depends only on
+`numpy`, `pandas`, `matplotlib`, and `zstandard` (the last only for `.zst`
+inputs).
+
 ### Data Dependencies
 
-**Important**: This repository requires external data sources that are not included:
+**Important**: The main pipeline requires external data sources that are not included:
 
-1. **AIS Data**: Global satellite AIS telemetry in JSON format, organized by vessel MMSI
+1. **AIS Data (primary study)**: Global satellite AIS telemetry (Spire Global) in JSON format, organized by vessel MMSI
 2. **Water Occurrence Raster**: Global Surface Water Occurrence dataset (JRC, ~40GB VRT mosaic)
 3. **Sanctions Lists**: OFAC/EU/UK vessel sanctions databases for cross-referencing
 
-The data directory contains only schema definitions and sample format specifications.
+The `data/` directory contains only schema definitions and sample format specifications.
+
+#### Data for the NOAA reproduction
+
+The `noaa_validation/` module runs on **NOAA's public AIS feed** (no Spire access
+required). Download daily files from the NOAA AIS data handler:
+
+- Source: `https://coast.noaa.gov/htdata/CMSP/AISDataHandler/2024/index.html`
+  (replace the year as needed).
+- The reproduction in the paper uses **December 31, 2024** (`AIS_2024_12_31.zip`)
+  as the event day and **January 1, 2025** as a control day.
+- Each daily file is a single CSV (~750–840 MB uncompressed). The loader reads
+  `.csv`, `.zip`, `.zst`, and `.gz` directly, so no manual extraction is needed.
+
+NOAA distributes two CSV layouts in the wild; the loader handles **both**:
+
+| Layout | Header | Datetime | Coord order |
+|--------|--------|----------|-------------|
+| Classic (marinecadastre) | `MMSI,BaseDateTime,LAT,LON,...` | `2024-12-31T00:00:08` | LAT, then LON |
+| Lowercase variant | `mmsi,base_date_time,longitude,latitude,...` | `2025-01-01 00:00:00` | **LON, then LAT** |
+
+A small **bundled sample** (`AIS_2024_12_31_SAMPLE.zip`, ~5 MB, 70 vessels) lets
+reviewers run the module immediately without the full download; it reproduces the
+same 10 confirmed-episode vessels and cross-shaped geometry as the full file.
+A second sample (`sample_ais_variant_schema.csv`) exercises the lowercase layout.
+
+> **Coverage note.** NOAA's feed is sourced from **U.S. terrestrial receivers**
+> and therefore covers vessels in U.S. coastal waters **regardless of flag**
+> (in the Gulf box, ~16% of vessels are foreign-flagged: Liberia, Marshall
+> Islands, Panama, Bahamas, Norway, etc.). It is *not* a U.S.-flag-only feed.
+> Counts are lower than the Spire (global satellite) figures because NOAA cannot
+> see (a) spoofed endpoints that jump outside U.S. receiver range and (b) the
+> broader fleet that satellite AIS captures globally — a coverage difference, not
+> a flag-state restriction.
 
 ## Installation
 
@@ -124,6 +173,9 @@ measurement_noise: 1e-4          # R matrix diagonal
 gap_threshold_minutes: 7         # Filter reset threshold for large gaps
 ```
 
+The `noaa_validation/` module uses these same defaults, defined in
+`PipelineConfig` inside `anomaly_pipeline.py`.
+
 ## Usage
 
 ### Stage 1: Per-Vessel Detection
@@ -166,6 +218,31 @@ python -m src.analysis.geometric_classifier \
     --output-dir /path/to/analysis
 ```
 
+### NOAA Reproduction (open data)
+
+End-to-end recovery of the Gulf of Mexico (Cluster 10) event from NOAA data:
+
+```bash
+cd noaa_validation
+pip install pandas numpy matplotlib zstandard
+
+# Quick check on the bundled sample (~5 MB, runs in seconds):
+python run_gulf_validation.py --input AIS_2024_12_31_SAMPLE.zip --day 2024-12-31 --outdir sample_results
+
+# Full reproduction on the official NOAA daily file:
+python run_gulf_validation.py --input AIS_2024_12_31.zip --day 2024-12-31 --outdir results
+
+# Control day:
+python run_gulf_validation.py --input ais-2025-01-01.csv.zst --day 2025-01-01 --outdir results_jan01
+```
+
+Outputs (per run): `gulf_flagged_vessels.csv`, `gulf_episodes.csv`,
+`gulf_synchronization.csv`, and `gulf_validation.png`. The driver prints
+lower/upper-bound vessel counts and a confirmation verdict. See
+`noaa_validation/README.md` for full details and the headline result
+(NOAA recovers **10 / 634** vessels vs. Spire's **13 / 1,196** for the same zone,
+with the same linear, cross-shaped geometry).
+
 ## Methodology Notes
 
 ### Kalman Filter Formulation
@@ -203,11 +280,19 @@ The detection pipeline was validated against 22 major global ports (see paper Se
 - Faulty transponders
 - Transient GPS/AIS sensor anomalies
 
+As an additional open-data check, the `noaa_validation/` module independently
+recovers the Gulf of Mexico event from NOAA's public feed. Comparing the event
+day (Dec 31) against a control day (Jan 1) isolates the event (7 Dec-31-specific
+vessels) from a small persistent baseline (3 faulty/default-MMSI transmitters
+present on both days), consistent with the paper's classification of Cluster 10
+as an isolated single-day event.
+
 ## Known Limitations
 
 1. **Stealthy spoofing**: Physically consistent false trajectories may evade detection
 2. **Self-spoofing ambiguity**: Cannot always distinguish self-spoofing from external interference when co-located
 3. **Regional coverage gaps**: Detection sensitivity varies with AIS coverage density
+4. **NOAA coverage**: The open-data reproduction is bounded by U.S. terrestrial-receiver range, so it provides a lower-bound view of any event whose spoofed positions extend beyond U.S. coastal waters
 
 ## Citation
 
