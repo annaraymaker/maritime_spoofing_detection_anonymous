@@ -1,15 +1,15 @@
-# Maritime GPS Spoofing Detection Framework
+# Maritime GPS Spoofing Measurement Framework
 
-A motion-aware, marine-specific framework for detecting and characterizing GPS spoofing anomalies in global maritime positioning data using Automatic Identification System (AIS) telemetry.
+A motion-aware, marine-specific framework for identifying and characterizing GPS spoofing anomalies in global maritime positioning data using Automatic Identification System (AIS) telemetry.
 
 ## Overview
 
-This repository contains the implementation of a two-stage detection pipeline for identifying GPS spoofing events in maritime vessel traffic:
+This repository contains the implementation of a two-stage identification pipeline for identifying GPS spoofing events in maritime vessel traffic:
 
-1. **Stage 1 (Per-Vessel Anomaly Detection)**: Kalman-based trajectory prediction with finite-state machine (FSM) temporal grouping to detect physically implausible vessel motion
-2. **Stage 2 (Spoofing-Zone Clustering)**: DBSCAN-based spatial clustering to aggregate correlated anomalies across multiple vessels and identify persistent spoofing hotspots
+1. **Stage 1 (Per-Vessel Anomaly Identification)**: Kalman-based trajectory prediction with finite-state machine (FSM) temporal grouping to detect physically implausible vessel motion
+2. **Stage 2 (Anomaly-Zone Clustering)**: DBSCAN-based spatial clustering to aggregate correlated anomalies across multiple vessels and identify persistent anomalous hotspots
 
-The framework processes AIS data containing vessel positions, speeds, and courses to flag spoofing episodes characterized by:
+The framework processes AIS data containing vessel positions, speeds, and courses to flag anomalous episodes characterized by:
 - Deviation from predicted trajectories (>5km Kalman residuals)
 - Implausible speeds (>60 knots)
 - Positions over land (using Global Surface Water raster data)
