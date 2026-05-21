@@ -19,6 +19,10 @@ Gulf of Mexico spoofing event from NOAA's public AIS feed, independently of the
 Spire dataset, so reviewers can run an end-to-end confirmation from open data on
 a single daily file. See [NOAA Reproduction](#noaa-reproduction-open-data) below.
 
+A second module (`dma_validation/`) runs the same pipeline over the Baltic /
+Øresund region (Cluster 12) using the Danish Maritime Authority's public AIS
+feed across a multi-day window. See [DMA Reproduction](#dma-reproduction-open-data) below.
+
 ## Repository Structure
 
 ```
@@ -54,6 +58,14 @@ maritime_spoofing_repo/
 │   ├── run_gulf_validation.py  #   one-command runner
 │   ├── README.md               #   module-specific docs
 │   └── (sample data, see below)
+├── dma_validation/             # Open-data reproduction (Baltic/Oresund, Cluster 12)
+│   ├── dma_loader.py           #   Danish Maritime Authority AIS loader (multi-day)
+│   ├── anomaly_pipeline.py     #   Stage 1 (shared with noaa_validation)
+│   ├── zone_analysis.py        #   geometry + synchronization (shared)
+│   ├── run_baltic_validation.py#   multi-day runner
+│   ├── download_dma.py         #   optional local DMA downloader
+│   ├── README.md               #   module-specific docs
+│   └── (synthetic sample, see below)
 ├── data/
 │   ├── sample/                 # Sample data schemas (no actual data)
 │   └── schemas/                # Data format specifications
@@ -84,9 +96,10 @@ See `requirements.txt` for the full dependency list. Core packages include:
 - `cartopy>=0.20.0` (map projections)
 - `folium>=0.12.0` (interactive mapping)
 
-The `noaa_validation/` module is intentionally lightweight and depends only on
-`numpy`, `pandas`, `matplotlib`, and `zstandard` (the last only for `.zst`
-inputs).
+The `noaa_validation/` and `dma_validation/` modules are intentionally
+lightweight and depend only on `numpy`, `pandas`, `matplotlib`, and `zstandard`
+(the last only for `.zst` inputs; `dma_validation/download_dma.py` additionally
+uses `requests`).
 
 ### Data Dependencies
 
@@ -130,6 +143,34 @@ A second sample (`sample_ais_variant_schema.csv`) exercises the lowercase layout
 > see (a) spoofed endpoints that jump outside U.S. receiver range and (b) the
 > broader fleet that satellite AIS captures globally — a coverage difference, not
 > a flag-state restriction.
+
+#### Data for the DMA reproduction
+
+The `dma_validation/` module runs on the **Danish Maritime Authority (DMA)**
+public AIS feed (no Spire access required). Download daily files from:
+
+- Source: `http://aisdata.ais.dk/?prefix=`
+- Files are named `aisdk-YYYY-MM-DD.zip`, one per day, each containing a single
+  CSV. The Baltic / Øresund (Cluster 12) reproduction uses the window
+  **2024-12-03 .. 2024-12-17** (15 files).
+- Daily files are large (~2–4 GB uncompressed). The loader reads `.zip`, `.csv`,
+  `.zst`, and `.gz` directly, so no manual extraction is needed, and accepts a
+  whole directory of daily zips at once.
+- An optional helper, `dma_validation/download_dma.py`, downloads a date range
+  locally (run on a machine with internet access).
+
+The DMA CSV schema differs from NOAA and is normalized by `dma_loader.py`:
+
+| Field | Notes |
+|-------|-------|
+| Header | First column is `# Timestamp` (leading `#` comment marker), stripped on load |
+| `Timestamp` | **Day-first** format `DD/MM/YYYY HH:MM:SS` (e.g. `03/12/2024` = 3 December) |
+| `Latitude` / `Longitude` | `91` / `181` are AIS "not available" sentinels, dropped |
+| `Ship type` | Textual category (`Cargo`, `Tanker`, ...), kept as a string |
+
+A small **synthetic** fixture (`aisdk-2024-12-03_SAMPLE.zip`) is bundled so the
+module runs without the full download; it is generated for code testing only and
+is not real AIS data.
 
 ## Installation
 
@@ -242,6 +283,37 @@ lower/upper-bound vessel counts and a confirmation verdict. See
 `noaa_validation/README.md` for full details and the headline result
 (NOAA recovers **10 / 634** vessels vs. Spire's **13 / 1,196** for the same zone,
 with the same linear, cross-shaped geometry).
+
+### DMA Reproduction (open data)
+
+Multi-day run over the Baltic / Øresund (Cluster 12) from DMA data:
+
+```bash
+cd dma_validation
+pip install pandas numpy matplotlib zstandard
+
+# Quick check on the bundled synthetic sample:
+python run_baltic_validation.py --input aisdk-2024-12-03_SAMPLE.zip --outdir sample_results
+
+# Full window: point at the folder of downloaded daily zips (read while zipped):
+python run_baltic_validation.py --input /path/to/dma_files --outdir results
+
+# Or a glob / explicit file list:
+python run_baltic_validation.py --input "/path/to/dma_files/aisdk-2024-12-*.zip" --outdir results
+```
+
+The runner consumes multiple daily files at once, stitches multi-day vessel
+tracks, and defaults to the Cluster 12 home box `(54.5, 56.5, 11.0, 14.0)`
+(center `(55.4358, 12.7245)`); override with `--bbox LATMIN LATMAX LONMIN LONMAX`.
+Because the Øresund is dense, the loader thins to one fix per vessel per minute
+by default; control this with `--thin-seconds N` (`0` disables).
+
+Outputs (per run): `baltic_flagged_vessels.csv`, `baltic_episodes.csv`,
+`baltic_synchronization.csv`, `baltic_per_day.csv`, plus two figures —
+`baltic_validation.png` (map + synchronization timeline + per-day bars) and
+`baltic_jumps.png` (standalone jump map, styled like the Gulf figure). The
+driver prints lower/upper-bound vessel counts and a per-day breakdown. See
+`dma_validation/README.md` for full details.
 
 ## Methodology Notes
 
